@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シンマエラボ 報告ツール</title>
+<style>
+  :root {
+    --ink: #1a2332; --ink-soft: #4a5568; --line: #d8dee9; --line-soft: #e8edf3;
+    --bg: #eef1f5; --card: #ffffff; --accent: #2d6a8e; --accent-deep: #1f4d68;
+    --accent-soft: #e3eef4; --gold: #b8860b; --good: #2f7d4f; --good-soft: #e4f2ea;
+    --warm: #fbfaf7; --shadow: 0 1px 3px rgba(26,35,50,.08), 0 6px 20px rgba(26,35,50,.06); --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif; background: var(--bg); color: var(--ink); line-height: 1.7; padding: 16px; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 680px; margin: 0 auto; }
+  header { text-align: center; padding: 20px 0 24px; }
+  header .logo { display: inline-flex; align-items: baseline; gap: 10px; }
+  header h1 { font-size: 1.35rem; font-weight: 800; letter-spacing: .04em; color: var(--ink); }
+  header .sub { font-size: .72rem; color: var(--ink-soft); letter-spacing: .18em; font-weight: 600; text-transform: uppercase; }
+  header .tagline { margin-top: 6px; font-size: .8rem; color: var(--ink-soft); letter-spacing: .02em; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; background: var(--card); padding: 6px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; }
+  .tab { appearance: none; border: none; background: transparent; padding: 13px 6px; border-radius: 10px; font-family: inherit; font-size: .9rem; font-weight: 700; color: var(--ink-soft); cursor: pointer; transition: all .18s ease; letter-spacing: .01em; }
+  .tab .tab-sub { display: block; font-size: .66rem; font-weight: 500; color: var(--ink-soft); margin-top: 2px; letter-spacing: .03em; }
+  .tab[aria-selected="true"] { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(45,106,142,.3); }
+  .tab[aria-selected="true"] .tab-sub { color: rgba(255,255,255,.8); }
+  .panel { display: none; animation: fade .25s ease; }
+  .panel.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 16px; }
+  .card-head { padding: 16px 20px; background: linear-gradient(135deg, var(--accent-deep), var(--accent)); color: #fff; display: flex; align-items: center; justify-content: space-between; }
+  .card-head h2 { font-size: 1.02rem; font-weight: 700; letter-spacing: .03em; }
+  .card-head .badge { font-size: .68rem; background: rgba(255,255,255,.2); padding: 4px 10px; border-radius: 20px; font-weight: 600; letter-spacing: .05em; }
+  .card-body { padding: 20px; }
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { display: block; font-size: .8rem; font-weight: 700; color: var(--ink-soft); margin-bottom: 6px; letter-spacing: .02em; }
+  .field .hint { font-weight: 500; color: var(--accent); font-size: .74rem; }
+  input[type="text"], input[type="number"], input[type="date"], textarea { width: 100%; font-family: inherit; font-size: .95rem; color: var(--ink); background: var(--warm); border: 1.5px solid var(--line); border-radius: 10px; padding: 11px 13px; transition: border-color .15s, box-shadow .15s; }
+  input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); background: #fff; }
+  input::placeholder, textarea::placeholder { color: #a8b3c1; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .inline-money { position: relative; }
+  .inline-money input { padding-right: 34px; }
+  .inline-money::after { content: "円"; position: absolute; right: 13px; top: 50%; transform: translateY(-50%); font-size: .85rem; color: var(--ink-soft); pointer-events: none; }
+  .section-label { font-size: .82rem; font-weight: 800; color: var(--ink); letter-spacing: .03em; margin: 22px 0 12px; padding-bottom: 7px; border-bottom: 2px solid var(--line-soft); display: flex; align-items: center; gap: 8px; }
+  .section-label::before { content: ""; width: 4px; height: 15px; background: var(--gold); border-radius: 2px; }
+  .worker { background: var(--warm); border: 1.5px solid var(--line-soft); border-radius: 12px; padding: 14px; margin-bottom: 12px; position: relative; }
+  .worker .worker-num { position: absolute; top: -9px; left: 13px; background: var(--accent); color: #fff; font-size: .68rem; font-weight: 700; padding: 2px 9px; border-radius: 10px; letter-spacing: .05em; }
+  .worker .del-worker { position: absolute; top: 10px; right: 10px; appearance: none; border: none; background: #f0e0e0; color: #b04a4a; width: 24px; height: 24px; border-radius: 7px; font-size: 1rem; line-height: 1; cursor: pointer; transition: background .15s; }
+  .worker .del-worker:hover { background: #e6c8c8; }
+  .worker .wname { margin-bottom: 10px; margin-top: 4px; }
+  .worker .wname input { font-weight: 600; }
+  .work-detail { display: grid; grid-template-columns: 1fr 1fr 1.1fr; gap: 8px; }
+  .work-detail .field { margin: 0; }
+  .work-detail label { font-size: .72rem; margin-bottom: 4px; }
+  .add-btn { width: 100%; appearance: none; border: 1.5px dashed var(--accent); background: var(--accent-soft); color: var(--accent-deep); padding: 11px; border-radius: 10px; font-family: inherit; font-size: .88rem; font-weight: 700; cursor: pointer; transition: all .15s; letter-spacing: .02em; }
+  .add-btn:hover { background: #d4e6f0; }
+  .total-bar { background: var(--accent-soft); border-radius: 11px; padding: 14px 18px; margin-top: 16px; display: flex; align-items: center; justify-content: space-between; }
+  .total-bar .t-label { font-size: .85rem; font-weight: 700; color: var(--accent-deep); }
+  .total-bar .t-val { font-size: 1.3rem; font-weight: 800; color: var(--accent-deep); letter-spacing: .02em; }
+  .total-bar .t-val .yen { font-size: .9rem; margin-left: 2px; }
+  .preview-card { background: var(--ink); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+  .preview-head { padding: 13px 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.1); }
+  .preview-head .ph-title { color: #fff; font-size: .82rem; font-weight: 700; letter-spacing: .05em; display: flex; align-items: center; gap: 7px; }
+  .preview-head .ph-title::before { content: "📋"; font-size: .9rem; }
+  .preview { font-family: "SF Mono", "Consolas", "Menlo", monospace; font-size: .82rem; line-height: 1.75; color: #d4dae3; padding: 18px; white-space: pre-wrap; word-break: break-word; max-height: 340px; overflow-y: auto; }
+  .copy-btn { width: 100%; appearance: none; border: none; background: var(--good); color: #fff; padding: 15px; font-family: inherit; font-size: 1rem; font-weight: 800; letter-spacing: .04em; cursor: pointer; transition: background .15s, transform .1s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .copy-btn:hover { background: #276a42; }
+  .copy-btn:active { transform: scale(.99); }
+  .copy-btn.done { background: var(--gold); }
+  .save-btn { width: 100%; appearance: none; border: none; background: var(--accent); color: #fff; padding: 15px; font-family: inherit; font-size: 1rem; font-weight: 800; letter-spacing: .04em; cursor: pointer; transition: background .15s, transform .1s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+  .save-btn:hover { background: var(--accent-deep); }
+  .save-btn:active { transform: scale(.99); }
+  .save-btn.done { background: var(--gold); }
+  .save-btn.update-mode { background: var(--gold); }
+  .save-btn.update-mode:hover { background: #9a710a; }
+  .util-row { display: flex; gap: 8px; margin-top: 10px; }
+  .util-row button { flex: 1; appearance: none; border: 1.5px solid var(--line); background: #fff; color: var(--ink-soft); padding: 10px; border-radius: 9px; font-family: inherit; font-size: .82rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+  .util-row button:hover { border-color: var(--accent); color: var(--accent); }
+  .edit-banner { background: var(--gold); color: #fff; padding: 10px 16px; border-radius: 10px; font-size: .82rem; font-weight: 700; margin-bottom: 14px; display: none; align-items: center; justify-content: space-between; gap: 10px; }
+  .edit-banner.show { display: flex; }
+  .edit-banner button { appearance: none; border: 1.5px solid rgba(255,255,255,.6); background: transparent; color: #fff; padding: 5px 11px; border-radius: 7px; font-family: inherit; font-size: .76rem; font-weight: 600; cursor: pointer; }
+  .hist-filter { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--card); padding: 6px; border-radius: 11px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .hist-filter button { appearance: none; border: none; background: transparent; padding: 10px; border-radius: 8px; font-family: inherit; font-size: .84rem; font-weight: 700; color: var(--ink-soft); cursor: pointer; transition: all .15s; }
+  .hist-filter button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent-deep); }
+  .hist-item { background: var(--card); border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 12px; overflow: hidden; }
+  .hist-item-head { padding: 13px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; gap: 10px; }
+  .hist-item-head:hover { background: var(--warm); }
+  .hist-tag { font-size: .64rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; letter-spacing: .05em; flex-shrink: 0; }
+  .hist-tag.monthly { background: var(--accent-soft); color: var(--accent-deep); }
+  .hist-tag.daily { background: var(--good-soft); color: var(--good); }
+  .hist-title { flex: 1; font-size: .92rem; font-weight: 700; color: var(--ink); }
+  .hist-meta { font-size: .7rem; color: var(--ink-soft); }
+  .hist-chevron { color: var(--ink-soft); font-size: .8rem; transition: transform .2s; }
+  .hist-item.open .hist-chevron { transform: rotate(90deg); }
+  .hist-body { display: none; border-top: 1px solid var(--line-soft); padding: 14px 16px; }
+  .hist-item.open .hist-body { display: block; }
+  .hist-text { font-family: "SF Mono", "Consolas", "Menlo", monospace; font-size: .76rem; line-height: 1.7; color: var(--ink-soft); white-space: pre-wrap; word-break: break-word; background: var(--warm); padding: 13px; border-radius: 9px; margin-bottom: 12px; }
+  .hist-actions { display: flex; gap: 8px; }
+  .hist-actions button { flex: 1; appearance: none; border: 1.5px solid var(--line); background: #fff; padding: 9px; border-radius: 8px; font-family: inherit; font-size: .8rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+  .hist-actions .h-copy { color: var(--good); border-color: #bfe0cd; }
+  .hist-actions .h-copy:hover { background: var(--good-soft); }
+  .hist-actions .h-edit { color: var(--accent); border-color: #bcdaea; }
+  .hist-actions .h-edit:hover { background: var(--accent-soft); }
+  .hist-actions .h-del { color: #b04a4a; border-color: #e6c8c8; flex: 0 0 auto; padding: 9px 14px; }
+  .hist-actions .h-del:hover { background: #f4e4e4; }
+  .empty { text-align: center; padding: 50px 20px; color: var(--ink-soft); }
+  .empty .big { font-size: 2.4rem; margin-bottom: 10px; opacity: .5; }
+  .empty p { font-size: .88rem; }
+  footer { text-align: center; padding: 22px 0 10px; font-size: .72rem; color: var(--ink-soft); letter-spacing: .03em; }
+  footer .note { display: block; margin-top: 6px; font-size: .68rem; color: #9aa5b3; }
+  @media (max-width: 480px) {
+    .work-detail { grid-template-columns: 1fr; gap: 6px; }
+    .row3 { grid-template-columns: 1fr; }
+    header h1 { font-size: 1.15rem; }
+    .tab { font-size: .82rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><h1>シンマエラボ</h1><span class="sub">Report</span></div>
+    <p class="tagline">就労継続支援B型　業務報告ツール</p>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-panel="monthly">月次報告<span class="tab-sub">毎月末日</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-panel="daily">日次報告<span class="tab-sub">毎日</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-panel="history">記録一覧<span class="tab-sub" id="hist-count-sub">0件</span></button>
+  </div>
+
+  <!-- MONTHLY -->
+  <section class="panel active" id="monthly">
+    <div class="edit-banner" id="m-edit-banner">
+      <span>📝 保存済みの記録を編集中</span>
+      <button id="m-cancel-edit">編集をやめる</button>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>月次　売上・工賃報告</h2><span class="badge" id="m-month-badge">—</span></div>
+      <div class="card-body">
+        <div class="field"><label>報告月</label><input type="text" id="m-month" placeholder="例：6" inputmode="numeric"></div>
+        <div class="section-label">売上</div>
+        <div class="field"><label>国保連請求額 <span class="hint">（予定）</span></label><div class="inline-money"><input type="number" id="m-kokuho" placeholder="0" inputmode="numeric"></div></div>
+        <div class="field"><label>内職売上</label><div class="inline-money"><input type="number" id="m-naishoku" placeholder="0" inputmode="numeric"></div></div>
+        <div class="total-bar"><span class="t-label">売上合計</span><span class="t-val" id="m-sales-total">0<span class="yen">円</span></span></div>
+        <div class="section-label">利用者工賃支払い</div>
+        <div id="m-workers"></div>
+        <button class="add-btn" id="m-add-worker">＋ 利用者を追加</button>
+        <div class="total-bar" style="background: var(--good-soft); margin-top:16px;"><span class="t-label" style="color: var(--good);">工賃支払い合計</span><span class="t-val" id="m-wage-total" style="color: var(--good);">0<span class="yen">円</span></span></div>
+      </div>
+    </div>
+    <div class="preview-card"><div class="preview-head"><span class="ph-title">送信プレビュー</span></div><div class="preview" id="m-preview"></div></div>
+    <div style="height:12px"></div>
+    <button class="copy-btn" id="m-copy">本文をコピー</button>
+    <button class="save-btn" id="m-save">この内容を記録に保存</button>
+    <div class="util-row"><button id="m-reset">入力をクリア</button></div>
+  </section>
+
+  <!-- DAILY -->
+  <section class="panel" id="daily">
+    <div class="edit-banner" id="d-edit-banner">
+      <span>📝 保存済みの記録を編集中</span>
+      <button id="d-cancel-edit">編集をやめる</button>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>日次　利用状況報告</h2><span class="badge">1日の終わりに</span></div>
+      <div class="card-body">
+        <div class="field"><label>報告日</label><input type="date" id="d-date"></div>
+        <div class="section-label">利用者名</div>
+        <div id="d-names"></div>
+        <button class="add-btn" id="d-add-name">＋ 利用者を追加</button>
+        <div class="section-label">人数集計</div>
+        <div class="row3">
+          <div class="field"><label>利用</label><div class="inline-money"><input type="number" id="d-present" placeholder="0" inputmode="numeric"></div></div>
+          <div class="field"><label>欠席</label><div class="inline-money"><input type="number" id="d-absent" placeholder="0" inputmode="numeric"></div></div>
+          <div class="field"><label>合計</label><input type="number" id="d-total" placeholder="0" inputmode="numeric" style="background:var(--accent-soft); font-weight:700; color:var(--accent-deep);"></div>
+        </div>
+        <p style="font-size:.74rem; color:var(--ink-soft); margin-top:-4px;">合計は利用＋欠席で自動計算されます。手動で書き換えることもできます。</p>
+      </div>
+    </div>
+    <div class="preview-card"><div class="preview-head"><span class="ph-title">送信プレビュー</span></div><div class="preview" id="d-preview"></div></div>
+    <div style="height:12px"></div>
+    <button class="copy-btn" id="d-copy">本文をコピー</button>
+    <button class="save-btn" id="d-save">この内容を記録に保存</button>
+    <div class="util-row"><button id="d-reset">入力をクリア</button></div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="panel" id="history">
+    <div class="hist-filter" role="tablist">
+      <button aria-selected="true" data-filter="all">すべて</button>
+      <button aria-selected="false" data-filter="monthly">月次</button>
+    </div>
+    <div class="hist-filter" style="grid-template-columns:1fr 1fr; margin-top:-10px;">
+      <button data-filter="daily" aria-selected="false">日次</button>
+      <button id="hist-export">記録を書き出し</button>
+    </div>
+    <div id="hist-list"></div>
+  </section>
+
+  <footer>
+    シンマエラボ 業務報告ツール
+    <span class="note">記録はこの端末のブラウザに保存されます。<br>大切な記録は時々「書き出し」でバックアップしてください。</span>
+  </footer>
+</div>
+
+<script>
+const STORE_KEY = 'shinmaelabo_reports_v1';
+function loadRecords() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch(e) { return []; } }
+function saveRecords(arr) { try { localStorage.setItem(STORE_KEY, JSON.stringify(arr)); } catch(e) { alert('保存に失敗しました。ブラウザの設定をご確認ください。'); } }
+let records = loadRecords();
+
+const tabs = document.querySelectorAll('.tab');
+const panels = document.querySelectorAll('.panel');
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => t.setAttribute('aria-selected', 'false'));
+    tab.setAttribute('aria-selected', 'true');
+    panels.forEach(p => p.classList.remove('active'));
+    document.getElementById(tab.dataset.panel).classList.add('active');
+    if (tab.dataset.panel === 'history') renderHistory();
+  });
+});
+
+const yen = n => (Number(n) || 0).toLocaleString('ja-JP');
+const blank = '⚪⚪';
+function fmtMoney(v) { return (v === '' || v == null) ? blank : yen(v); }
+function fmtRaw(v, suffix) { return (v === '' || v == null) ? blank : v + (suffix||''); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+// MONTHLY
+const mWorkers = document.getElementById('m-workers');
+let mEditingId = null;
+function makeWorkerBlock(data) {
+  const div = document.createElement('div');
+  div.className = 'worker';
+  div.innerHTML = `<span class="worker-num">利用者</span><button class="del-worker" title="削除">×</button>
+    <div class="wname field"><input type="text" class="w-name" placeholder="氏名（例：山田 太郎）"></div>
+    <div class="work-detail">
+      <div class="field"><label>稼働日数</label><div class="inline-money"><input type="number" class="w-days" placeholder="0" inputmode="numeric"></div></div>
+      <div class="field"><label>営業日数</label><div class="inline-money"><input type="number" class="w-total-days" placeholder="0" inputmode="numeric"></div></div>
+      <div class="field"><label>工賃</label><div class="inline-money"><input type="number" class="w-wage" placeholder="0" inputmode="numeric"></div></div>
+    </div>`;
+  if (data) {
+    div.querySelector('.w-name').value = data.name || '';
+    div.querySelector('.w-days').value = data.days || '';
+    div.querySelector('.w-total-days').value = data.totalDays || '';
+    div.querySelector('.w-wage').value = data.wage || '';
+  }
+  div.querySelector('.del-worker').addEventListener('click', () => { div.remove(); renumberWorkers(); updateMonthly(); });
+  div.querySelectorAll('input').forEach(inp => inp.addEventListener('input', updateMonthly));
+  mWorkers.appendChild(div);
+  renumberWorkers();
+  updateMonthly();
+}
+function renumberWorkers() { mWorkers.querySelectorAll('.worker').forEach((w, i) => { w.querySelector('.worker-num').textContent = '利用者 ' + (i + 1); }); }
+function collectMonthly() {
+  const workers = [];
+  mWorkers.querySelectorAll('.worker').forEach(w => {
+    workers.push({ name: w.querySelector('.w-name').value, days: w.querySelector('.w-days').value, totalDays: w.querySelector('.w-total-days').value, wage: w.querySelector('.w-wage').value });
+  });
+  return { month: document.getElementById('m-month').value, kokuho: document.getElementById('m-kokuho').value, naishoku: document.getElementById('m-naishoku').value, workers };
+}
+function buildMonthlyText(d) {
+  const monthStr = d.month || blank;
+  const kokuhoStr = fmtMoney(d.kokuho);
+  const naishokuStr = fmtMoney(d.naishoku);
+  const salesTotal = (Number(d.kokuho)||0) + (Number(d.naishoku)||0);
+  const salesTotalStr = salesTotal > 0 ? yen(salesTotal) : blank;
+  let wageTotal = 0, workerLines = '';
+  (d.workers||[]).forEach(w => {
+    wageTotal += Number(w.wage) || 0;
+    const nameStr = w.name || blank + ' ' + blank;
+    workerLines += `${nameStr}\n${fmtRaw(w.days,'日')}（${fmtRaw(w.days)}日/${fmtRaw(w.totalDays)}日）稼働　${fmtMoney(w.wage)}円\n`;
+  });
+  if (!workerLines) workerLines = `${blank} ${blank}\n${blank}日（${blank}日/${blank}日）稼働　${blank}円\n`;
+  const wageTotalStr = wageTotal > 0 ? yen(wageTotal) : blank;
+  return `お疲れ様です。
+シンマエラボ${monthStr}月詳細です。
+
+・国保連請求額　${kokuhoStr}円(予定)
+・内職売上　${naishokuStr}円
+合計${salesTotalStr}円
+
+・利用者工賃支払い
+${workerLines}合計${wageTotalStr}円
+
+※国保連の請求額は確定次第、再度報告するものとする`;
+}
+function updateMonthly() {
+  const d = collectMonthly();
+  document.getElementById('m-month-badge').textContent = d.month ? d.month + '月' : '—';
+  const salesTotal = (Number(d.kokuho)||0) + (Number(d.naishoku)||0);
+  document.getElementById('m-sales-total').innerHTML = yen(salesTotal) + '<span class="yen">円</span>';
+  let wageTotal = 0;
+  (d.workers||[]).forEach(w => wageTotal += Number(w.wage) || 0);
+  document.getElementById('m-wage-total').innerHTML = yen(wageTotal) + '<span class="yen">円</span>';
+  document.getElementById('m-preview').textContent = buildMonthlyText(d);
+}
+document.getElementById('m-add-worker').addEventListener('click', () => makeWorkerBlock());
+['m-month','m-kokuho','m-naishoku'].forEach(id => document.getElementById(id).addEventListener('input', updateMonthly));
+document.getElementById('m-copy').addEventListener('click', function() { copyText(document.getElementById('m-preview').textContent, this); });
+function resetMonthly() {
+  ['m-month','m-kokuho','m-naishoku'].forEach(id => document.getElementById(id).value = '');
+  mWorkers.innerHTML = '';
+  makeWorkerBlock();
+  exitMonthlyEdit();
+}
+document.getElementById('m-reset').addEventListener('click', () => { if (!confirm('月次報告の入力をクリアしますか？')) return; resetMonthly(); });
+document.getElementById('m-save').addEventListener('click', function() {
+  const d = collectMonthly();
+  const text = buildMonthlyText(d);
+  if (mEditingId) {
+    const idx = records.findIndex(r => r.id === mEditingId);
+    if (idx >= 0) { records[idx].data = d; records[idx].text = text; records[idx].updated = Date.now(); }
+    saveRecords(records); flashBtn(this, '✓ 更新しました'); exitMonthlyEdit();
+  } else {
+    records.unshift({ id: uid(), type: 'monthly', data: d, text, created: Date.now(), updated: Date.now() });
+    saveRecords(records); flashBtn(this, '✓ 保存しました');
+  }
+  updateHistCount();
+});
+function loadMonthlyForEdit(rec) {
+  mEditingId = rec.id;
+  const d = rec.data;
+  document.getElementById('m-month').value = d.month || '';
+  document.getElementById('m-kokuho').value = d.kokuho || '';
+  document.getElementById('m-naishoku').value = d.naishoku || '';
+  mWorkers.innerHTML = '';
+  if (d.workers && d.workers.length) d.workers.forEach(w => makeWorkerBlock(w)); else makeWorkerBlock();
+  document.getElementById('m-edit-banner').classList.add('show');
+  const btn = document.getElementById('m-save');
+  btn.textContent = 'この記録を上書き保存'; btn.classList.add('update-mode');
+  updateMonthly(); switchTab('monthly');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function exitMonthlyEdit() {
+  mEditingId = null;
+  document.getElementById('m-edit-banner').classList.remove('show');
+  const btn = document.getElementById('m-save');
+  btn.textContent = 'この内容を記録に保存'; btn.classList.remove('update-mode');
+}
+document.getElementById('m-cancel-edit').addEventListener('click', () => { resetMonthly(); });
+
+// DAILY
+const dNames = document.getElementById('d-names');
+let dEditingId = null;
+function makeNameBlock(value) {
+  const div = document.createElement('div');
+  div.className = 'worker';
+  div.style.paddingTop = '14px';
+  div.innerHTML = `<button class="del-worker" title="削除">×</button><div class="field" style="margin:0;"><input type="text" class="d-name" placeholder="氏名（例：山田 太郎）"></div>`;
+  if (value) div.querySelector('.d-name').value = value;
+  div.querySelector('.del-worker').addEventListener('click', () => { div.remove(); updateDaily(); });
+  div.querySelector('input').addEventListener('input', updateDaily);
+  dNames.appendChild(div);
+  updateDaily();
+}
+function formatJpDate(value) {
+  if (!value) return null;
+  const d = new Date(value + 'T00:00:00');
+  const w = ['日','月','火','水','木','金','土'][d.getDay()];
+  return `${d.getMonth()+1}/${d.getDate()}(${w})`;
+}
+function collectDaily() {
+  const names = [];
+  dNames.querySelectorAll('.d-name').forEach(inp => names.push(inp.value));
+  return { date: document.getElementById('d-date').value, present: document.getElementById('d-present').value, absent: document.getElementById('d-absent').value, total: document.getElementById('d-total').value, names };
+}
+function buildDailyText(d) {
+  const dateStr = formatJpDate(d.date) || `${blank}/${blank}(${blank})`;
+  let nameLines = '';
+  (d.names||[]).forEach(n => nameLines += (n || blank + ' ' + blank) + '\n');
+  if (!nameLines) nameLines = blank + ' ' + blank + '\n';
+  return `${dateStr}
+利用者名
+${nameLines}利用${fmtRaw(d.present)}名
+欠席${fmtRaw(d.absent)}名
+合計${fmtRaw(d.total)}名`;
+}
+function updateDaily() {
+  const present = document.getElementById('d-present').value;
+  const absent = document.getElementById('d-absent').value;
+  const totalField = document.getElementById('d-total');
+  if (document.activeElement !== totalField && (present !== '' || absent !== '')) {
+    totalField.value = (Number(present)||0) + (Number(absent)||0);
+  }
+  document.getElementById('d-preview').textContent = buildDailyText(collectDaily());
+}
+document.getElementById('d-add-name').addEventListener('click', () => makeNameBlock());
+['d-date','d-present','d-absent','d-total'].forEach(id => document.getElementById(id).addEventListener('input', updateDaily));
+document.getElementById('d-copy').addEventListener('click', function() { copyText(document.getElementById('d-preview').textContent, this); });
+function resetDaily() {
+  document.getElementById('d-date').value = todayStr();
+  ['d-present','d-absent','d-total'].forEach(id => document.getElementById(id).value = '');
+  dNames.innerHTML = '';
+  makeNameBlock();
+  exitDailyEdit();
+}
+document.getElementById('d-reset').addEventListener('click', () => { if (!confirm('日次報告の入力をクリアしますか？')) return; resetDaily(); });
+document.getElementById('d-save').addEventListener('click', function() {
+  const d = collectDaily();
+  const text = buildDailyText(d);
+  if (dEditingId) {
+    const idx = records.findIndex(r => r.id === dEditingId);
+    if (idx >= 0) { records[idx].data = d; records[idx].text = text; records[idx].updated = Date.now(); }
+    saveRecords(records); flashBtn(this, '✓ 更新しました'); exitDailyEdit();
+  } else {
+    records.unshift({ id: uid(), type: 'daily', data: d, text, created: Date.now(), updated: Date.now() });
+    saveRecords(records); flashBtn(this, '✓ 保存しました');
+  }
+  updateHistCount();
+});
+function loadDailyForEdit(rec) {
+  dEditingId = rec.id;
+  const d = rec.data;
+  document.getElementById('d-date').value = d.date || '';
+  document.getElementById('d-present').value = d.present || '';
+  document.getElementById('d-absent').value = d.absent || '';
+  document.getElementById('d-total').value = d.total || '';
+  dNames.innerHTML = '';
+  if (d.names && d.names.length) d.names.forEach(n => makeNameBlock(n)); else makeNameBlock();
+  document.getElementById('d-edit-banner').classList.add('show');
+  const btn = document.getElementById('d-save');
+  btn.textContent = 'この記録を上書き保存'; btn.classList.add('update-mode');
+  updateDaily(); switchTab('daily');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function exitDailyEdit() {
+  dEditingId = null;
+  document.getElementById('d-edit-banner').classList.remove('show');
+  const btn = document.getElementById('d-save');
+  btn.textContent = 'この内容を記録に保存'; btn.classList.remove('update-mode');
+}
+document.getElementById('d-cancel-edit').addEventListener('click', () => { resetDaily(); });
+
+// HISTORY
+let histFilter = 'all';
+document.querySelectorAll('.hist-filter [data-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.hist-filter [data-filter]').forEach(b => b.setAttribute('aria-selected','false'));
+    btn.setAttribute('aria-selected','true');
+    histFilter = btn.dataset.filter;
+    renderHistory();
+  });
+});
+function renderHistory() {
+  const list = document.getElementById('hist-list');
+  let items = records.slice();
+  if (histFilter !== 'all') items = items.filter(r => r.type === histFilter);
+  if (!items.length) {
+    list.innerHTML = `<div class="empty"><div class="big">🗂️</div><p>まだ記録がありません。<br>報告を保存するとここに表示されます。</p></div>`;
+    return;
+  }
+  list.innerHTML = '';
+  items.forEach(rec => {
+    const div = document.createElement('div');
+    div.className = 'hist-item';
+    const isM = rec.type === 'monthly';
+    let title;
+    if (isM) title = (rec.data.month || '—') + '月　売上・工賃報告';
+    else title = (formatJpDate(rec.data.date) || '日付未設定') + '　利用状況';
+    const dt = new Date(rec.updated || rec.created);
+    const meta = `${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} 保存`;
+    div.innerHTML = `
+      <div class="hist-item-head">
+        <span class="hist-tag ${rec.type}">${isM ? '月次' : '日次'}</span>
+        <div style="flex:1; min-width:0;">
+          <div class="hist-title">${escapeHtml(title)}</div>
+          <div class="hist-meta">${meta}</div>
+        </div>
+        <span class="hist-chevron">▶</span>
+      </div>
+      <div class="hist-body">
+        <div class="hist-text">${escapeHtml(rec.text)}</div>
+        <div class="hist-actions">
+          <button class="h-copy">コピー</button>
+          <button class="h-edit">編集</button>
+          <button class="h-del">削除</button>
+        </div>
+      </div>`;
+    div.querySelector('.hist-item-head').addEventListener('click', (e) => {
+      if (e.target.closest('.hist-actions')) return;
+      div.classList.toggle('open');
+    });
+    div.querySelector('.h-copy').addEventListener('click', function() { copyText(rec.text, this, true); });
+    div.querySelector('.h-edit').addEventListener('click', () => { if (isM) loadMonthlyForEdit(rec); else loadDailyForEdit(rec); });
+    div.querySelector('.h-del').addEventListener('click', () => {
+      if (!confirm('この記録を削除しますか？')) return;
+      records = records.filter(r => r.id !== rec.id);
+      saveRecords(records); updateHistCount(); renderHistory();
+    });
+    list.appendChild(div);
+  });
+}
+function updateHistCount() { document.getElementById('hist-count-sub').textContent = records.length + '件'; }
+document.getElementById('hist-export').addEventListener('click', () => {
+  if (!records.length) { alert('書き出す記録がありません。'); return; }
+  let txt = '【シンマエラボ 報告記録 書き出し】\n書き出し日時：' + new Date().toLocaleString('ja-JP') + '\n\n';
+  records.forEach((r, i) => {
+    txt += `━━━━━ ${i+1}件目（${r.type === 'monthly' ? '月次' : '日次'}）━━━━━\n` + r.text + '\n\n';
+  });
+  const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'シンマエラボ報告記録_' + todayStr() + '.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+function copyText(text, btn, isHist) {
+  const original = btn.textContent;
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch(e) {}
+    document.body.removeChild(ta);
+  };
+  const done = () => {
+    btn.textContent = isHist ? '✓ コピー済' : '✓ コピーしました';
+    if (!isHist) btn.classList.add('done');
+    setTimeout(() => { btn.textContent = original; btn.classList.remove('done'); }, 1600);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done).catch(() => { fallback(); done(); });
+  } else { fallback(); done(); }
+}
+function flashBtn(btn, msg) {
+  btn.textContent = msg; btn.classList.add('done');
+  setTimeout(() => {
+    btn.classList.remove('done');
+    if (btn.id === 'm-save') btn.textContent = mEditingId ? 'この記録を上書き保存' : 'この内容を記録に保存';
+    else if (btn.id === 'd-save') btn.textContent = dEditingId ? 'この記録を上書き保存' : 'この内容を記録に保存';
+  }, 1600);
+}
+function switchTab(name) {
+  tabs.forEach(t => t.setAttribute('aria-selected', t.dataset.panel === name ? 'true' : 'false'));
+  panels.forEach(p => p.classList.toggle('active', p.id === name));
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function todayStr() { const t = new Date(); return t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0'); }
+
+document.getElementById('d-date').value = todayStr();
+makeWorkerBlock();
+makeNameBlock();
+updateMonthly();
+updateDaily();
+updateHistCount();
+</script>
+</body>
+</html>
